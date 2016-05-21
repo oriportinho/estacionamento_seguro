@@ -21,13 +21,17 @@ void setup(){
 	}
 	*/
 
-	pinMode(13, OUTPUT); //Led de funcionamento
-	pinMode(9 , OUTPUT); //Led de alerta de proximidade
-	pinMode(8 ,  INPUT); //Botao de alteracao da distancia
+	Serial.begin(9600);
+
+	pinMode(13, OUTPUT);   //Led de funcionamento
+	pinMode(12,  INPUT);   //Botao de alteracao da distancia
+	//pinMode(11,  INPUT); //sensor ultrasonico
+	//pinMode(10,  INPUT); //sensor ultrasonico
+	pinMode(9 , OUTPUT);   //Led de alerta de proximidade
 
 	digitalWrite(13, HIGH);
 
-	calibracao();
+	distancia = calibracao();
 	
 	tempoDelay = 20000;
 	flagTemp = true;
@@ -43,8 +47,20 @@ float obterDistancia(){
 }
 
 void loop(){
-	if(digitalRead(8) == 1){ //verificar se deve mudar a calibracao
-		calibracao();
+	while(digitalRead(12) == 1){ //verificar se deve mudar a calibracao
+		distancia = calibracao();
+
+		if(obterDistancia() <= distancia){
+			digitalWrite(9, HIGH);
+		}else{
+			digitalWrite(9, LOW);
+		}
+		
+		Serial.write(distancia);
+		Serial.write(" | ");
+		Serial.write((int)obterDistancia());
+		Serial.write("\n");
+		delay(250);
 	}
 
 	if(obterDistancia() <= distancia && flagTemp){ //verificar se deve ligar a led de aviso
@@ -68,6 +84,11 @@ void loop(){
 		//mostrarTela();
 	}
 
+
+	Serial.write((int)distancia);
+	Serial.write(" | ");
+	Serial.write((int)obterDistancia());
+	Serial.write("\n");
 	delay(250);
 }
 
