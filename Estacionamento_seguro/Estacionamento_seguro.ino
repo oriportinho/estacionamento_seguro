@@ -1,114 +1,97 @@
-//#include <LiquidCrystal.h>
-
 #include "Ultrasonic.h"
 
 Ultrasonic ultrasonic (11, 10);//11 trigger 10 echo
-//LiquidCrystal lcd(12,11,5,4,3,2);
 
 long distancia;
 int tempoDelay;
-boolean flagTemp;
-boolean flagDisplay = false;
+bool serial;
+bool flagTemp;
 
 void setup(){
+	// Serial para debug, mudar valor para true em caso de querer debugar o codigo
+	serial = false;
+	if(serial)
+		Serial.begin(9600);
 
-	/*
-	if(flagDisplay()){
-		lcd.begin(16,2);
-		lcd.clear();
-		lcd.print("test");
-		delay(1000);
-	}
-	*/
+	// Instanciar pinos
+	pinMode(13, OUTPUT);   // Led de funcionamento
+	pinMode(12,  INPUT);   // Botao de alteracao da distancia
+	pinMode(11,  INPUT);   // Sensor ultrasonico (trigger)
+	pinMode(10,  INPUT);   // Sensor ultrasonico (echo)
+	pinMode( 9, OUTPUT);   // Led de alerta de proximidade
 
-	Serial.begin(9600);
-
-	pinMode(13, OUTPUT);   //Led de funcionamento
-	pinMode(12,  INPUT);   //Botao de alteracao da distancia
-	//pinMode(11,  INPUT); //sensor ultrasonico
-	//pinMode(10,  INPUT); //sensor ultrasonico
-	pinMode(9 , OUTPUT);   //Led de alerta de proximidade
-
+	// Led de funcionamento
 	digitalWrite(13, HIGH);
 
+	// Instancias iniciais
 	distancia = calibracao();
-	
 	tempoDelay = 20000;
 	flagTemp = true;
 }
 
-long calibracao(){
-	return (long)(analogRead(A0)/10 + 5);
-}
-
-float obterDistancia(){
-	long microsec = ultrasonic.timing();
-	return ultrasonic.convert(microsec, Ultrasonic::CM);
-}
-
 void loop(){
-	while(digitalRead(12) == 1){ //verificar se deve mudar a calibracao
+	// Verificar se o botao de calibracao esta ativo, se sim, alterar a calibracao
+	while(digitalRead(12) == 1){
 		distancia = calibracao();
+		flagTemp = true;
+		digitalWrite(9, LOW);
 
+		// Testar a nova calibracao
 		if(obterDistancia() <= distancia){
 			digitalWrite(9, HIGH);
 		}else{
 			digitalWrite(9, LOW);
 		}
-		
-		Serial.write(distancia);
-		Serial.write(" | ");
-		Serial.write((int)obterDistancia());
-		Serial.write("\n");
-		delay(250);
+
+		// Debug
+		if(serial){
+			Serial.write(distancia);
+			Serial.write(" | ");
+			Serial.write((int)obterDistancia());
+			Serial.write("\n");
+		}
+
+		delay(100);
+		digitalWrite(9, LOW);
 	}
 
-	if(obterDistancia() <= distancia && flagTemp){ //verificar se deve ligar a led de aviso
-		digitalWrite(9, HIGH);
-		
+	// Verifica se deve ligar a led de aviso
+	if(flagTemp && obterDistancia() <= distancia){
+		digitalWrite( 9, HIGH);
 		delay(tempoDelay);
-		if(obterDistancia() <= distancia){ // desligar a led de aviso 2 mim depois para economizar energia
-			digitalWrite(9, LOW);
+
+		// Desligar a led de aviso para economizar energia
+		if(obterDistancia() <= distancia){
+			digitalWrite( 9,  LOW);
 			flagTemp = false;
 		}
-		
+
 	}else{
-		digitalWrite(9, LOW);
-		delay(1000);
+		digitalWrite( 9,  LOW);
+		delay(tempoDelay);
 		if(obterDistancia() > distancia){
 			flagTemp = true;
 		}
 	}
-	
-	if(flagDisplay){ //mostrar a tela
-		//mostrarTela();
+
+	// Debug
+	if(serial){
+		Serial.write((int)distancia);
+		Serial.write(" | ");
+		Serial.write((int)obterDistancia());
+		Serial.write("\n");
 	}
 
-
-	Serial.write((int)distancia);
-	Serial.write(" | ");
-	Serial.write((int)obterDistancia());
-	Serial.write("\n");
 	delay(250);
 }
 
-/*
-void mostrarTela(){
-	float cmMsec;
-	long microsec = ultrasonic.timing();
-	cmMsec = ultrasonic.convert(microsec, Ultrasonic::CM);
-	inMsec = ultrasonic.convert(microsec, Ultrasonic::IN);
-
-	lcd.clear();
-	lcd.setCursor(0,0);
-	lcd.print(cmMsec);
-	lcd.setCursor(0,1);
-	lcd.print(inMsec);
-	
-	Serial.print("Distancia em cm: ");
-	Serial.print(cmMsec);
-	Serial.print(" - Distancia em polegadas: ");
-	Serial.print(inMsec);
-	Serial.print("\n");
+// Metodo para calibrar o sistema de acordo com o valor do potenciometro
+long calibracao(){
+	return (long)(analogRead(A0)/10 + 5);
 }
-*/
+
+// Metodo para calcular a distancia usando o sensor
+float obterDistancia(){
+	long microsec = ultrasonic.timing();
+	return ultrasonic.convert(microsec, Ultrasonic::CM);
+}
